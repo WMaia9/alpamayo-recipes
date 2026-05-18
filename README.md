@@ -22,7 +22,8 @@ Each recipe folder contains its own README with installation and training instru
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/download_pai.py` | Download the Physical AI AV dataset from HuggingFace |
 | `scripts/curate_pai_samples.py` | Curate a subset of PAI samples |
+| `scripts/convert_checkpoint.py` | Convert between Alpamayo 1 and 1.5 checkpoints |
 | `scripts/convert_release_config_to_training.py` | Convert a release checkpoint to training format |
 | `scripts/convert_cosmos_rl_checkpoint.py` | Convert a Cosmos-RL checkpoint to HuggingFace format |
+| `scripts/download_pai.py` | Download the Physical AI AV dataset from HuggingFace |

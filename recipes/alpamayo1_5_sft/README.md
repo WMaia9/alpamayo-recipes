@@ -105,7 +105,7 @@ Set `data_root: /path/to/LingoQA/` in [sft_stage1_lingoqa](./configs/sft_stage1_
 
 ## Prepare Checkpoint
 
-Download the pretrained Alpamayo-1.5 checkpoint from
+Download the pretrained Alpamayo 1.5 checkpoint from
 [Hugging Face](https://huggingface.co/nvidia/Alpamayo-1.5-10B) into a local directory (Stage 1
 loads weights from disk):
 
@@ -210,7 +210,7 @@ torchrun --nproc_per_node 8 \
   -m alpamayo1_5_sft.evaluate_hf \
   --config-path pkg://alpamayo1_5_sft/configs \
   --config-name sft_stage2_nav \
-  evaluate.eval_ckpt=<path/to/output_stage2/checkpoint-xxxx> 
+  evaluate.eval_ckpt=<path/to/output_stage2/checkpoint-xxxx>
 ```
 
 Eval is intended for trajectory checkpoints (Stage 2 produced from a navigation Stage-1 run). VQA Stage-1 outputs do not have a trajectory target and aren't covered by the distance metrics above.
