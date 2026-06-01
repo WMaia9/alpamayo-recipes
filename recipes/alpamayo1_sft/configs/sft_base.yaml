@@ -6,6 +6,7 @@ data:
   collate_fn:
     _target_: alpamayo.processor.qwen_processor.collate_fn_from_model_config
     _partial_: true
+    chat_template_version: r1
   train_dataset:
     _recursive_: false
     _target_: alpamayo.data.pai.PAIDataset
