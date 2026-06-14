@@ -109,7 +109,7 @@ class FlowMatching(BaseDiffusion):
         temperature: float = 1.0,
         *args,
         **kwargs,
-    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor] | dict[str, torch.Tensor]:
         """Sample data from the model.
 
         Args:
