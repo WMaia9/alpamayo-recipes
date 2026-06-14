@@ -190,7 +190,7 @@ class FlowMatching(BaseDiffusion):
             else:
                 return x
         else:
-            raise ValueError(f"Invalid integration method: {self.int_method}")
+            raise ValueError(f"Invalid integration method: {int_method}")
 
     @staticmethod
     def _guided_v(
