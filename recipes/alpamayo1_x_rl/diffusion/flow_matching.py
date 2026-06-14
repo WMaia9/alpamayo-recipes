@@ -530,7 +530,6 @@ class FlowMatching(BaseDiffusion):
             timesteps: (B, T+1) The timesteps.
             sample: (B, T+1, ...) The sample.
             noise_level: The noise level.
-            sde_type: The SDE type.
         """
         t = timesteps[:, :-1]
         t_next = timesteps[:, 1:]
