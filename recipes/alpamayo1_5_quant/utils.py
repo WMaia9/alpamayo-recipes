@@ -54,6 +54,14 @@ FP8_CONFIG = {
         "*[qkv]_bmm_quantizer": {"num_bits": (4, 3), "axis": None},
         "*softmax_quantizer": {"num_bits": (4, 3), "axis": None},
         "*bmm2_output_quantizer": {"num_bits": (4, 3), "axis": None},
+        # Leave the vision patch-embed Conv3d (the model's only convolution) in FP16.
+        # mtq.compress real-quantizes its weight, but ModelOpt's HF save/restore only
+        # re-wraps Linear weights as QTensorWrapper on load — the Conv weight comes back
+        # as a plain tensor with an orphaned `_scale`, so a compressed checkpoint then
+        # fails inference with "self._dequantize is True and self.fake_quant is False".
+        # Excluding this one tiny layer makes the *real-quant* checkpoint loadable while
+        # costing negligible compression. (The fake-quant path is unaffected either way.)
+        "*patch_embed*": {"enable": False},
     },
     "algorithm": "max",
 }
@@ -148,8 +156,13 @@ def quantize_model(model, args, tokenizer=None, calibration_forward_loop=None):
         quant_cfg["quant_cfg"]["*action_in_proj.encoder.trunk.0.weight_quantizer"] = {
             "enable": False
         }
+        # Keep the vision patch-embed Conv3d in FP16: mtq.compress real-quantizes conv
+        # weights but ModelOpt's HF restore only re-wraps Linear weights, so a compressed
+        # conv breaks inference. See FP8_CONFIG above for the full explanation.
+        quant_cfg["quant_cfg"]["*patch_embed*"] = {"enable": False}
     elif args.quant_format == "w4a8_nvfp4_fp8":
         quant_cfg = mtq.W4A8_NVFP4_FP8_CFG
+        quant_cfg["quant_cfg"]["*patch_embed*"] = {"enable": False}
     else:
         raise RuntimeError("Unsupported quantization format")
 
@@ -304,7 +317,22 @@ def auto_quantize_model(
             data_loader=data_loader,
             forward_step=forward_step,
             loss_func=loss_func,
-            disabled_layers="*lm_head*",
+            # disabled_layers applies across BOTH candidate formats (NVFP4 and FP8):
+            #  - *patch_embed*: vision Conv3d — compressed conv weights don't reload
+            #    (see FP8_CONFIG note); the FP8-only exclusion can't cover the NVFP4 candidate.
+            #  - *action_in_proj.encoder.trunk.0* (in=60) and *action_out_proj* (out=2):
+            #    their weight dims aren't divisible by the NVFP4 block size (16). NVFP4 pads
+            #    the dim and its dequantize() then fails to reshape back ("shape '[512, 60]'
+            #    is invalid for input of size 32768"). FP8 (per-tensor) is fine, but the search
+            #    may pick NVFP4 for them, so disable them outright. (The standalone nvfp4 path
+            #    already excludes trunk.0 for the same reason.)
+            #  - *lm_head*: left unquantized as before.
+            disabled_layers=[
+                "*lm_head*",
+                "*patch_embed*",
+                "*action_in_proj.encoder.trunk.0*",
+                "*action_out_proj*",
+            ],
             num_calib_steps=512,
             num_score_steps=128,
             verbose=True,

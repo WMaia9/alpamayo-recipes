@@ -11,13 +11,13 @@ This recipe is tested in the following settings.
 - Python 3.12
 - Python Libraries: torch==2.8.0, torchvision==0.23.0, nvidia-modelopt==0.43.0
 
-**NVIDIA Model Optimizer (ModelOpt)** is a library comprising state-of-the-art model optimization techniques including quantization and sparsity to compress models. In this recipe, we utilize ModelOpt to post train quantize Alpamayo 1.5 losslessly.
+**NVIDIA Model Optimizer (ModelOpt)** is a library comprising state-of-the-art model optimization techniques including quantization and sparsity to compress models. In this recipe, we utilize ModelOpt to post train quantize Alpamayo 1.5 with minimal accuracy loss.
 
 | Quantization     | Parameter Size | xChange |
 | ---------------- | -------------- | ------- |
 | BF16             | ~22 GB         | 1.00x   |
-| FP8              | ~13 GB         | 1.70x   |
-| Autoquant 6.5BPE | ~10 GB         | 2.20x   |
+| FP8              | ~11 GB         | 2.00x   |
+| Autoquant 6.5BPE | ~9 GB          | 2.44x   |
 
 ## Table of contents
 

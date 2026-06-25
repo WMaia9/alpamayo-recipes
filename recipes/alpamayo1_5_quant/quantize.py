@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import gc
 import os
 from pathlib import Path
 from typing import Any
@@ -214,6 +215,10 @@ def make_joint_calibration_forward_loop(
                         num_traj_samples=calibration_traj_samples,
                         max_generation_length=max_generation_length,
                     )
+
+                del data, messages, inputs, model_inputs
+                gc.collect()
+                torch.cuda.empty_cache()
 
     return _calibration_loop
 
