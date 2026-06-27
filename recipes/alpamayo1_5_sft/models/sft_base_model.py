@@ -99,9 +99,27 @@ def load_alpamayo1_vlm(checkpoint_path: str, model: Any):
     if not vlm_state_dict:
         raise ValueError(f"No vlm.* tensors found in checkpoint: {checkpoint_dir}")
 
-    load_result = model.load_state_dict(vlm_state_dict, strict=False, assign=True)
+    target_keys = set(model.state_dict())
+    direct_matches = target_keys.intersection(vlm_state_dict)
+    stripped_state_dict = {
+        key.removeprefix("vlm."): tensor for key, tensor in vlm_state_dict.items()
+    }
+    stripped_matches = target_keys.intersection(stripped_state_dict)
+
+    if len(direct_matches) == len(vlm_state_dict):
+        loadable_state_dict = vlm_state_dict
+    elif len(stripped_matches) == len(vlm_state_dict):
+        loadable_state_dict = stripped_state_dict
+    else:
+        raise ValueError(
+            f"VLM tensors from {checkpoint_dir} do not match the target model "
+            f"(prefixed={len(direct_matches)}, stripped={len(stripped_matches)}, "
+            f"checkpoint={len(vlm_state_dict)})"
+        )
+
+    load_result = model.load_state_dict(loadable_state_dict, strict=False, assign=True)
     logger.info(
-        f"Loaded {len(vlm_state_dict)} VLM tensors from {checkpoint_dir} (missing={len(load_result.missing_keys)}, unexpected={len(load_result.unexpected_keys)})",
+        f"Loaded {len(loadable_state_dict)} VLM tensors from {checkpoint_dir} (missing={len(load_result.missing_keys)}, unexpected={len(load_result.unexpected_keys)})",
     )
 
     return model
