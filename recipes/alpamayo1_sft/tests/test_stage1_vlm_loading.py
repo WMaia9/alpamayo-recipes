@@ -66,6 +66,17 @@ def test_load_alpamayo1_vlm_strips_prefix_for_nested_vlm(tmp_path: Path) -> None
     torch.testing.assert_close(model.state_dict()[key], replacement)
 
 
+def test_load_alpamayo1_vlm_accepts_unprefixed_nested_vlm(tmp_path: Path) -> None:
+    model = _tiny_qwen3_vl()
+    key = "model.language_model.embed_tokens.weight"
+    replacement = torch.full_like(model.state_dict()[key], 3)
+    _write_vlm_checkpoint(tmp_path, {key: replacement})
+
+    load_alpamayo1_vlm(str(tmp_path), model)
+
+    torch.testing.assert_close(model.state_dict()[key], replacement)
+
+
 def test_load_alpamayo1_vlm_keeps_prefix_for_full_model(tmp_path: Path) -> None:
     model = torch.nn.Module()
     model.vlm = torch.nn.Linear(1, 1, bias=False)
@@ -84,6 +95,41 @@ def test_load_alpamayo1_vlm_rejects_unmatched_keys(tmp_path: Path) -> None:
         load_alpamayo1_vlm(str(tmp_path), torch.nn.Linear(1, 1))
 
 
+def test_load_alpamayo1_vlm_rejects_indexed_tensor_missing_from_shard(
+    tmp_path: Path,
+) -> None:
+    shard_name = "model-00001-of-00001.safetensors"
+    _write_vlm_checkpoint(tmp_path, {"vlm.weight": torch.ones(1, 1)})
+    index = {
+        "weight_map": {
+            "vlm.weight": shard_name,
+            "vlm.bias": shard_name,
+        }
+    }
+    (tmp_path / "model.safetensors.index.json").write_text(
+        json.dumps(index), encoding="utf-8"
+    )
+    model = torch.nn.Module()
+    model.vlm = torch.nn.Linear(1, 1)
+
+    with pytest.raises(ValueError, match="missing.*vlm.bias"):
+        load_alpamayo1_vlm(str(tmp_path), model)
+
+
+def test_load_alpamayo1_vlm_rejects_meta_target_when_preserving_placement(
+    tmp_path: Path,
+) -> None:
+    _write_vlm_checkpoint(tmp_path, {"weight": torch.ones(1, 1)})
+    model = torch.nn.Linear(1, 1, bias=False, device="meta")
+
+    with pytest.raises(ValueError, match="meta.*cannot preserve"):
+        load_alpamayo1_vlm(
+            str(tmp_path),
+            model,
+            preserve_model_device_and_dtype=True,
+        )
+
+
 def test_from_pretrained_applies_stage1_after_parent_load(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -100,7 +146,7 @@ def test_from_pretrained_applies_stage1_after_parent_load(
         assert "stage1_vlm_checkpoint_path" not in kwargs
         model = object.__new__(cls)
         torch.nn.Module.__init__(model)
-        model.vlm = torch.nn.Linear(1, 1, bias=False)
+        model.vlm = torch.nn.Linear(1, 1, bias=False, dtype=torch.float16)
         model.vlm.weight.data.fill_(1)
         model.cotrain_vlm = kwargs["cotrain_vlm"]
         return model
@@ -113,7 +159,8 @@ def test_from_pretrained_applies_stage1_after_parent_load(
         cotrain_vlm=False,
     )
 
-    torch.testing.assert_close(model.vlm.weight, replacement)
+    torch.testing.assert_close(model.vlm.weight, replacement.to(model.vlm.weight))
+    assert model.vlm.weight.dtype == torch.float16
     assert not model.vlm.weight.requires_grad
 
 

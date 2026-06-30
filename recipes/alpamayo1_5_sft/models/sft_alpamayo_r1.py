@@ -73,7 +73,11 @@ class TrainableAlpamayoR1(AlpamayoR1):
         )
 
         if stage1_vlm_checkpoint_path is not None:
-            model.vlm = load_alpamayo1_vlm(stage1_vlm_checkpoint_path, model.vlm)
+            model.vlm = load_alpamayo1_vlm(
+                stage1_vlm_checkpoint_path,
+                model.vlm,
+                preserve_model_device_and_dtype=True,
+            )
 
         model._set_vlm_trainability()
         return model
